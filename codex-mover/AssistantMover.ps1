@@ -1,17 +1,19 @@
 ﻿#Requires -Version 5.1
 [CmdletBinding()]
 param(
-    [ValidateSet('Plan','Migrate','Restore','SelfTest')]
+    [ValidateSet('Plan','Migrate','Restore','SelfTest','Sources')]
     [string]$Action = 'Plan',
     [string]$TargetRoot,
     [string[]]$Include = @(),
     [string[]]$Workspace = @(),
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$ExplicitSelection,
+    [string]$RequestPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$script:Version = '1.0.0'
+$script:Version = '1.1.0'
 $script:LogPath = $null
 $script:StateName = 'assistant-mover-state.json'
 
@@ -27,6 +29,11 @@ function Get-DefaultSpecs {
     $local = [Environment]::GetFolderPath('LocalApplicationData')
     $profile = $env:USERPROFILE
     $specs = @(
+        @{ Id='codex-home'; App='OpenAI Codex'; Path=(Join-Path $profile '.codex') },
+        @{ Id='codex-runtimes'; App='OpenAI Codex'; Path=(Join-Path $profile '.cache\codex-runtimes') },
+        @{ Id='codex-local'; App='OpenAI Codex'; Path=(Join-Path $local 'OpenAI\Codex') },
+        @{ Id='codex-roaming'; App='OpenAI Codex'; Path=(Join-Path $roaming 'Codex') },
+        @{ Id='codex-workspaces'; App='OpenAI Codex'; Path=(Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Codex') },
         @{ Id='trae-roaming'; App='TRAE CN'; Path=(Join-Path $roaming 'Trae CN') },
         @{ Id='trae-local'; App='TRAE CN'; Path=(Join-Path $local 'Trae CN') },
         @{ Id='trae-user'; App='TRAE CN'; Path=(Join-Path $profile '.trae') },
@@ -39,6 +46,12 @@ function Get-DefaultSpecs {
         @{ Id='vscode-insiders-extensions'; App='VS Code Insiders'; Path=(Join-Path $profile '.vscode-insiders\extensions') },
         @{ Id='claude-code'; App='Claude Code'; Path=(Join-Path $profile '.claude') }
     )
+    if ($env:CODEX_HOME) {
+        $customHome = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($env:CODEX_HOME)).TrimEnd('\')
+        if (-not @($specs | Where-Object { $_.Path.TrimEnd('\').Equals($customHome,[StringComparison]::OrdinalIgnoreCase) }).Count) {
+            $specs += @{ Id='codex-custom-home'; App='OpenAI Codex'; Path=$customHome }
+        }
+    }
     foreach ($spec in $specs) {
         $spec['Kind'] = 'AppData'
         $spec['Display'] = '{0}  |  {1}' -f $spec.App, $spec.Path
@@ -117,7 +130,7 @@ function Get-CheckedSources {
     param([hashtable[]]$Specs)
     $chosen = @($Specs | Where-Object {
         (($_.Kind -eq 'Workspace') -or (Test-Path -LiteralPath $_.Path -PathType Container)) -and
-        (($Include.Count -eq 0) -or ($Include -contains $_.Id) -or ($Include -contains $_.App))
+        (($_.Kind -eq 'Workspace') -or ((-not $ExplicitSelection) -and ($Include.Count -eq 0)) -or ($Include -contains $_.Id) -or ($Include -contains $_.App))
     })
     $ids = @{}
     $targets = @{}
@@ -132,11 +145,20 @@ function Get-CheckedSources {
         $spec.Path = $source
         $spec.Target = $target
     }
+    for ($i=0; $i -lt $chosen.Count; $i++) {
+        for ($j=$i+1; $j -lt $chosen.Count; $j++) {
+            $left = $chosen[$i].Path
+            $right = $chosen[$j].Path
+            if ($left.Equals($right,[StringComparison]::OrdinalIgnoreCase) -or $left.StartsWith($right + '\',[StringComparison]::OrdinalIgnoreCase) -or $right.StartsWith($left + '\',[StringComparison]::OrdinalIgnoreCase)) {
+                throw "所选源目录重复或互相包含，请只选择一项：$left | $right"
+            }
+        }
+    }
     return $chosen
 }
 
 function Get-RunningAppNames {
-    $known = @('Trae','Trae CN','WorkBuddy','Code','Code - Insiders','Claude')
+    $known = @('Codex','codex-cli','Trae','Trae CN','WorkBuddy','Code','Code - Insiders','Claude')
     $running = @()
     foreach ($name in $known) {
         if (Get-Process -Name $name -ErrorAction SilentlyContinue) { $running += $name }
@@ -161,7 +183,7 @@ function Test-TargetDrive {
 function Invoke-Robocopy {
     param([string]$Source, [string]$Destination)
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
-    $arguments = @($Source,$Destination,'/E','/COPY:DAT','/DCOPY:DAT','/XJ','/SL','/R:1','/W:1','/NP','/NFL','/NDL','/NJH','/NJS')
+    $arguments = @(('"' + $Source.TrimEnd('\') + '"'),('"' + $Destination.TrimEnd('\') + '"'),'/E','/COPY:DAT','/DCOPY:DAT','/XJ','/SL','/R:1','/W:1','/NP','/NFL','/NDL','/NJH','/NJS')
     $process = Start-Process -FilePath 'robocopy.exe' -ArgumentList $arguments -NoNewWindow -Wait -PassThru
     if ($process.ExitCode -ge 8) { throw "robocopy 失败，退出码：$($process.ExitCode)" }
 }
@@ -195,7 +217,7 @@ function Write-State {
     $temp = $Path + '.tmp'
     $json = $State | ConvertTo-Json -Depth 8
     [IO.File]::WriteAllText($temp,$json,(New-Object Text.UTF8Encoding($false)))
-    if (Test-Path -LiteralPath $Path) { [IO.File]::Replace($temp,$Path,$null) } else { [IO.File]::Move($temp,$Path) }
+    if (Test-Path -LiteralPath $Path) { [IO.File]::Replace($temp,$Path,($Path + '.previous')) } else { [IO.File]::Move($temp,$Path) }
 }
 
 function Invoke-Plan {
@@ -227,7 +249,7 @@ function Invoke-Migration {
             throw "源路径已是指向其他位置的联接，拒绝覆盖：$($spec.Path) -> $junctionTarget"
         }
         if (Test-IsReparsePoint -Path $spec.Path) { throw "源路径是符号链接或其他重解析点，暂不支持：$($spec.Path)" }
-        $processNames = Get-RunningAppNames
+        $processNames = @(Get-RunningAppNames)
         if ($processNames.Count -gt 0) { throw ('请先退出相关应用：' + ($processNames -join ', ')) }
         if (Test-Path -LiteralPath $spec.Target) { throw "目标目录已存在，拒绝覆盖：$($spec.Target)" }
         $manifest = Get-TreeManifest -Root $spec.Path
@@ -322,7 +344,7 @@ function Invoke-Restore {
     if (-not (Test-Path -LiteralPath $statePath)) { throw "找不到迁移状态：$statePath" }
     $state = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($state.Status -ne 'Committed') { throw "迁移状态不是 Committed（当前：$($state.Status)），拒绝自动恢复。" }
-    $running = Get-RunningAppNames
+    $running = @(Get-RunningAppNames)
     if ($running.Count -gt 0) { throw ('请先退出相关应用：' + ($running -join ', ')) }
     $script:LogPath = Join-Path (Split-Path -Parent $statePath) ('restore-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.log')
     $restored = New-Object 'System.Collections.Generic.List[object]'
@@ -331,14 +353,13 @@ function Invoke-Restore {
             $actual = Get-JunctionTarget -Path $entry.Source
             if (-not $actual -or -not $actual.Equals([IO.Path]::GetFullPath($entry.Target).TrimEnd('\'),[StringComparison]::OrdinalIgnoreCase)) { throw "原路径联接与状态不符，拒绝恢复：$($entry.Source)" }
             if (-not (Test-Path -LiteralPath $entry.Target -PathType Container)) { throw "目标备份不存在：$($entry.Target)" }
-            $expected = [PSCustomObject]@{ Directories=@($entry.Manifest.Directories); Files=@($entry.Manifest.Files); FileCount=[int]$entry.Manifest.FileCount; DirectoryCount=[int]$entry.Manifest.DirectoryCount; Bytes=[long]$entry.Manifest.Bytes }
             $current = Get-TreeManifest -Root $entry.Target
-            $baselineDiff = @(Compare-Manifests -SourceManifest $expected -TargetManifest $current)
-            if ($baselineDiff.Count -gt 0) { throw ('目标盘数据与迁移清单不一致 {0}：{1}' -f $entry.Id,($baselineDiff -join '; ')) }
             $stage = $entry.Source + '.__assistant-restore-' + (Get-Date -Format 'yyyyMMddHHmmssfff')
             Write-Log ('恢复到原路径：{0}' -f $entry.Source)
             Invoke-Robocopy -Source $entry.Target -Destination $stage
             $live = Get-TreeManifest -Root $entry.Target
+            $changed = @(Compare-Manifests -SourceManifest $current -TargetManifest $live)
+            if ($changed.Count -gt 0) { throw ('恢复期间目标数据发生变化 {0}：{1}' -f $entry.Id,($changed -join '; ')) }
             $copy = Get-TreeManifest -Root $stage
             $diff = @(Compare-Manifests -SourceManifest $live -TargetManifest $copy)
             if ($diff.Count -gt 0) { throw ('恢复副本校验失败 {0}：{1}' -f $entry.Id,($diff -join '; ')) }
@@ -346,8 +367,12 @@ function Invoke-Restore {
             $restored.Add($entry)
         }
         foreach ($entry in $restored) {
+            $entry | Add-Member -NotePropertyName RestoreSwitched -NotePropertyValue $false -Force
+        }
+        foreach ($entry in $restored) {
             Remove-JunctionOnly -Path $entry.Source -ExpectedTarget $entry.Target
             [IO.Directory]::Move($entry.RestoreStage,$entry.Source)
+            $entry.RestoreSwitched = $true
             Write-Log ('恢复完成：{0}' -f $entry.Source)
         }
         $state.Status = 'Restored'
@@ -357,8 +382,10 @@ function Invoke-Restore {
         Write-Log ('恢复失败，尝试恢复 junction：' + $_.Exception.Message) 'ERROR'
         foreach ($entry in $restored) {
             try {
-                if (-not (Test-Path -LiteralPath $entry.Source) -and (Test-Path -LiteralPath $entry.RestoreStage)) { [IO.Directory]::Move($entry.RestoreStage,$entry.Source) }
-                elseif (-not (Get-JunctionTarget -Path $entry.Source)) { New-Junction -Link $entry.Source -Target $entry.Target }
+                if ($entry.PSObject.Properties['RestoreSwitched'] -and $entry.RestoreSwitched) {
+                    [IO.Directory]::Move($entry.Source,$entry.RestoreStage)
+                }
+                if (-not (Test-Path -LiteralPath $entry.Source)) { New-Junction -Link $entry.Source -Target $entry.Target }
             } catch { Write-Log ('人工检查路径：{0} | {1}' -f $entry.Source,$_.Exception.Message) 'ERROR' }
         }
         throw
@@ -389,9 +416,21 @@ function Invoke-SelfTest {
 }
 
 try {
+    [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false)
+    if ($RequestPath) {
+        $request = [IO.File]::ReadAllText([IO.Path]::GetFullPath($RequestPath)) | ConvertFrom-Json
+        if ($request.Action -notin @('Plan','Migrate','Restore')) { throw '无效的请求动作。' }
+        $Action = [string]$request.Action
+        $TargetRoot = [string]$request.TargetRoot
+        $Include = @($request.Include | ForEach-Object { [string]$_ })
+        $Workspace = @($request.Workspace | ForEach-Object { [string]$_ })
+        $ExplicitSelection = $true
+        $DryRun = [bool]$request.DryRun
+    }
     if ($Action -eq 'SelfTest') { Invoke-SelfTest; exit 0 }
     if (-not $TargetRoot) { $TargetRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'AssistantData' }
     $specs = @(Get-DefaultSpecs)
+    if ($Action -eq 'Sources') { ConvertTo-Json -InputObject $specs -Depth 4; exit 0 }
     if ($Action -eq 'Restore') { Invoke-Restore; exit 0 }
     if ($Action -eq 'Plan' -or $DryRun) { Invoke-Plan -Specs $specs; exit 0 }
     Invoke-Migration -Specs $specs

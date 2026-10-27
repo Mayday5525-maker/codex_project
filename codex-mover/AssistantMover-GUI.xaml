@@ -1,80 +1,58 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Assistant Mover" Width="930" Height="820" MinWidth="780" MinHeight="680"
-        WindowStartupLocation="CenterScreen" Background="#F4F6F8"
-        FontFamily="Segoe UI Variable, Microsoft YaHei UI" UseLayoutRounding="True">
+        Title="Dev Mover · 开发工具数据迁移" Width="1120" Height="1000" MinWidth="960" MinHeight="740"
+        WindowStartupLocation="CenterScreen" Background="#F7F7F9"
+        FontFamily="Microsoft YaHei UI, Segoe UI" FontSize="13" Foreground="#18202D" UseLayoutRounding="True">
     <Window.Resources>
-        <SolidColorBrush x:Key="Ink" Color="#1E2933"/>
-        <SolidColorBrush x:Key="Muted" Color="#64727D"/>
-        <SolidColorBrush x:Key="Line" Color="#DCE3E8"/>
-        <SolidColorBrush x:Key="Green" Color="#147D64"/>
+        <SolidColorBrush x:Key="Line" Color="#E0E1E7"/>
+        <SolidColorBrush x:Key="Muted" Color="#778194"/>
+        <LinearGradientBrush x:Key="Accent" StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#8058FF" Offset="0"/><GradientStop Color="#4C87FF" Offset="1"/></LinearGradientBrush>
         <Style TargetType="Button">
-            <Setter Property="Padding" Value="14,9"/>
-            <Setter Property="Margin" Value="0,0,8,0"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="{StaticResource Line}"/><Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="#18202D"/><Setter Property="Padding" Value="17,11"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Surface" CornerRadius="12" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.84"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.45"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
         </Style>
-        <Style TargetType="CheckBox">
-            <Setter Property="Padding" Value="4,6"/>
-            <Setter Property="Margin" Value="0,1"/>
-            <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-            <Setter Property="FontSize" Value="13"/>
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="{StaticResource Line}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="12,10"/><Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox"><Border CornerRadius="10" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"><ScrollViewer x:Name="PART_ContentHost"/></Border></ControlTemplate></Setter.Value></Setter>
         </Style>
+        <Style TargetType="CheckBox"><Setter Property="Margin" Value="0,5"/><Setter Property="Padding" Value="5,0,0,0"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
+        <Style x:Key="Card" TargetType="Border"><Setter Property="CornerRadius" Value="15"/><Setter Property="Background" Value="White"/><Setter Property="BorderBrush" Value="{StaticResource Line}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Padding" Value="20"/><Setter Property="Margin" Value="0,0,0,14"/></Style>
     </Window.Resources>
-    <Grid Margin="24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        <DockPanel Grid.Row="0" Margin="0,0,0,18">
+    <Grid Margin="22">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="160"/></Grid.RowDefinitions>
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="Assistant Mover" FontSize="25" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
-                <TextBlock Text="迁移 TRAE CN、WorkBuddy、VS Code、Claude Code 的数据和工作区" Margin="0,5,0,0" Foreground="{StaticResource Muted}"/>
+                <StackPanel Orientation="Horizontal"><TextBlock Text="Dev Mover" FontSize="26" FontWeight="SemiBold"/><Border Background="{StaticResource Accent}" CornerRadius="12" Padding="11,3" Margin="12,0,0,0" VerticalAlignment="Center"><TextBlock Text="v1.1" Foreground="White"/></Border></StackPanel>
+                <TextBlock Text="图形向导 v1.1 · 把 OpenAI Codex / TRAE CN / WorkBuddy / VS Code / Claude Code 的数据与工作区安全迁移到其他磁盘" TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,6,16,0"/>
             </StackPanel>
-            <Border DockPanel.Dock="Right" Background="#E6F4EF" CornerRadius="4" Padding="10,6" VerticalAlignment="Center">
-                <TextBlock x:Name="StatusBadge" Text="就绪" Foreground="{StaticResource Green}" FontWeight="SemiBold"/>
-            </Border>
-        </DockPanel>
-        <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="16" Margin="0,0,0,14">
-            <Grid>
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock Text="目标位置" FontWeight="SemiBold" Foreground="{StaticResource Ink}"/>
-                    <TextBox x:Name="TargetBox" Height="34" Margin="0,8,12,0" Padding="9,6" VerticalContentAlignment="Center" Text="G:\AssistantData"/>
-                </StackPanel>
-                <Button x:Name="BrowseTarget" Grid.Column="1" Content="选择文件夹" VerticalAlignment="Bottom" Margin="0,0,0,0"/>
-            </Grid>
-        </Border>
-        <Grid Grid.Row="2">
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="2*"/><RowDefinition Height="Auto"/><RowDefinition Height="3*"/></Grid.RowDefinitions>
-            <DockPanel Grid.Row="0" Margin="0,0,0,8">
-                <TextBlock Text="迁移项目" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource Ink}"/>
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                    <Button x:Name="AddWorkspace" Content="添加工作区"/>
-                    <Button x:Name="RemoveWorkspace" Content="清空工作区" Margin="0"/>
-                </StackPanel>
-            </DockPanel>
-            <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="10">
-                <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel x:Name="SourceList"/></ScrollViewer>
-            </Border>
-            <DockPanel Grid.Row="2" Margin="0,14,0,8">
-                <TextBlock Text="运行记录" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource Ink}"/>
-                <TextBlock x:Name="RunHint" Text="演练不会更改文件" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
-            </DockPanel>
-            <TextBox Grid.Row="3" x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12" Padding="10" Background="#17212B" Foreground="#E7EEF3" BorderThickness="0"/>
+            <Border x:Name="StatusPanel" Grid.Column="1" Background="#D3F0DF" CornerRadius="14" Padding="14,6" VerticalAlignment="Center"><TextBlock x:Name="StatusBadge" Text="就绪" Foreground="#129962" FontWeight="SemiBold"/></Border>
         </Grid>
-        <DockPanel Grid.Row="3" Margin="0,14,0,0">
-            <CheckBox x:Name="DryRunBox" Content="演练模式（只预览，不修改文件）" IsChecked="True" VerticalAlignment="Center"/>
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                <Button x:Name="RestoreButton" Content="恢复备份"/>
-                <Button x:Name="RunButton" Content="开始演练" Background="#147D64" Foreground="White" BorderBrush="#147D64" Margin="0"/>
-            </StackPanel>
-        </DockPanel>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="235"/></Grid.ColumnDefinitions>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
+                <StackPanel>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,12"><TextBlock Text="1 · 选择要迁移的目录" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/><Button x:Name="RefreshSizes" Content="刷新大小" HorizontalAlignment="Right"/></Grid>
+                            <Border BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="11" Padding="10"><ScrollViewer Height="178" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"><StackPanel x:Name="SourceList"/></ScrollViewer></Border>
+                            <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="CustomPathBox" MinHeight="44" ToolTip="输入完整的项目目录路径；留空时打开文件夹选择器"/><Button x:Name="AddWorkspace" Grid.Column="1" Content="添加自定义目录" Margin="10,0,0,0"/></Grid>
+                            <TextBlock Text="勾选要迁移的目录；已迁移的目录默认取消勾选；不存在的路径自动跳过。" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,11,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel><TextBlock Text="2 · 选择目标位置" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,14"/>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><TextBlock Text="目标盘" VerticalAlignment="Center" Margin="0,0,12,0"/><ComboBox x:Name="DriveBox" Grid.Column="1" MinHeight="44" DisplayMemberPath="Display" Padding="9,7" VerticalContentAlignment="Center"/><TextBlock Grid.Column="2" Text="文件夹" VerticalAlignment="Center" Margin="16,0,12,0"/><TextBox x:Name="FolderBox" Grid.Column="3" Text="DevData" MinHeight="44"/></Grid>
+                            <TextBlock x:Name="TargetPreview" Text="迁移目标：请选择目标盘" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="3 · 执行选项" FontSize="16" FontWeight="SemiBold"/><CheckBox x:Name="DryRunBox" Content="演练模式（只预览，不修改文件）" IsChecked="True" Margin="0,12,0,8"/><TextBlock Text="正式迁移前退出相关应用。工具先复制、逐文件校验，再保留原路径为目录联接。" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/><Button x:Name="RemoveWorkspace" Content="清空自定义目录" HorizontalAlignment="Left" Margin="0,12,0,0"/></StackPanel></Border>
+                </StackPanel>
+            </ScrollViewer>
+            <StackPanel Grid.Column="2"><Button x:Name="RunButton" Content="开始演练" Height="58" Background="{StaticResource Accent}" BorderThickness="0" Foreground="White" FontSize="19" FontWeight="SemiBold"/><Button x:Name="RestoreButton" Content="回滚 / 恢复" Height="48" Margin="0,12,0,0" FontSize="16"/><Button x:Name="ExitButton" Content="退出" Height="48" Margin="0,12,0,0" FontSize="16"/><TextBlock x:Name="RunHint" Text="演练不会更改文件" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="5,18,5,0"/></StackPanel>
+        </Grid>
+        <Grid Grid.Row="2" Margin="0,10,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions><TextBlock Text="运行日志" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,9"/><TextBox Grid.Row="1" x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" FontFamily="Consolas, Microsoft YaHei UI" FontSize="12" VerticalContentAlignment="Top"/></Grid>
     </Grid>
 </Window>
