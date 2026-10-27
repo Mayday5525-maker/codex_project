@@ -1,6 +1,6 @@
 ﻿#Requires -Version 5.1
 [CmdletBinding()]
-param()
+param([switch]$SelfTest)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -25,7 +25,7 @@ $timer.Interval = [TimeSpan]::FromMilliseconds(250)
 
 function Add-SourceItem {
     param([string]$Id,[string]$App,[string]$Path,[string]$Kind)
-    if ($items | Where-Object { $_.Path.Equals($Path,[StringComparison]::OrdinalIgnoreCase) }) { return }
+    if ($items | Where-Object { $_.Tag.Path.Equals($Path,[StringComparison]::OrdinalIgnoreCase) }) { return }
     $exists = Test-Path -LiteralPath $Path -PathType Container
     $text = if ($exists) { "$App   |   $Path" } else { "$App   |   $Path   (未找到)" }
     $box = New-Object Windows.Controls.CheckBox
@@ -125,6 +125,11 @@ $defaultSpecs = @(
     @{Id='claude-code';App='Claude Code';Path=(Join-Path $profile '.claude')}
 )
 foreach ($spec in $defaultSpecs) { Add-SourceItem -Id $spec.Id -App $spec.App -Path $spec.Path -Kind 'AppData' }
+if ($SelfTest) {
+    if ($items.Count -ne $defaultSpecs.Count) { throw "Expected $($defaultSpecs.Count) source entries; found $($items.Count)." }
+    Write-Output "GUI initialization passed: $($items.Count) application source entries loaded."
+    exit 0
+}
 
 $controls.BrowseTarget.Add_Click({
     $dialog = New-Object Windows.Forms.FolderBrowserDialog
@@ -143,7 +148,7 @@ $controls.AddWorkspace.Add_Click({
     }
 })
 $controls.RemoveWorkspace.Add_Click({
-    foreach ($box in @($items | Where-Object { $_.IsSelected -and $_.Tag.Kind -eq 'Workspace' })) { [void]$controls.SourceList.Children.Remove($box); [void]$items.Remove($box) }
+    foreach ($box in @($items | Where-Object { $_.Tag.Kind -eq 'Workspace' })) { [void]$controls.SourceList.Children.Remove($box); [void]$items.Remove($box) }
 })
 $controls.DryRunBox.Add_Checked({ $controls.RunButton.Content='开始演练'; $controls.RunHint.Text='演练不会更改文件'; $controls.RunButton.Background=[Windows.Media.Brushes]::SeaGreen })
 $controls.DryRunBox.Add_Unchecked({ $controls.RunButton.Content='开始迁移'; $controls.RunHint.Text='正式迁移前请退出应用'; $controls.RunButton.Background=[Windows.Media.Brushes]::Firebrick })

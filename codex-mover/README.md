@@ -8,7 +8,7 @@ Move TRAE CN, WorkBuddy, VS Code, Claude Code data and selected project workspac
 
 ## 界面 / GUI
 
-双击 `AssistantMover-GUI.cmd`。选择目标目录，确认自动发现的应用目录，按需通过“添加工作区”选择项目文件夹。
+双击 `AssistantMover-GUI.cmd`。选择目标目录，确认自动发现的应用目录，按需通过“添加工作区”选择项目文件夹；如需移除本次添加的工作区，点击“清空工作区”。
 
 1. 先保持“演练模式”，查看源目录、目标目录和大小。
 2. 正式迁移前退出相关应用和终端会话，取消演练模式，再点击“开始迁移”。

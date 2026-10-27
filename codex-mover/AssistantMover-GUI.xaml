@@ -57,7 +57,7 @@
                 <TextBlock Text="迁移项目" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource Ink}"/>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
                     <Button x:Name="AddWorkspace" Content="添加工作区"/>
-                    <Button x:Name="RemoveWorkspace" Content="移除选中" Margin="0"/>
+                    <Button x:Name="RemoveWorkspace" Content="清空工作区" Margin="0"/>
                 </StackPanel>
             </DockPanel>
             <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="10">
